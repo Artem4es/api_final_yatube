@@ -1,4 +1,6 @@
 # TODO:  Напишите свой вариант
+from django.db.utils import IntegrityError
+from rest_framework.exceptions import ValidationError
 from rest_framework import filters, viewsets, pagination, status
 from rest_framework.mixins import (
     CreateModelMixin,
@@ -79,8 +81,13 @@ class FollowViewSet(
         return new_queryset
 
     def perform_create(self, serializer):
-        following_username = serializer.initial_data.get('following')
-        serializer.save(
-            user=self.request.user,
-            # following=User.objects.get(following__username=following_username),
-        )
+        following_username = serializer.validated_data.get('following')
+        try:
+            serializer.save(
+                user=self.request.user,
+                following=User.objects.get(username=following_username),
+            )
+        except IntegrityError:
+            raise ValidationError('Такая подписка уже есть!')
+        except User.DoesNotExist:
+            raise ValidationError('Нет такого пользователя')

@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueTogetherValidator
@@ -35,8 +36,7 @@ class FollowRetrieveSerializer(serializers.ModelSerializer):
     following = serializers.StringRelatedField(
         source='following.username',
     )
-    # def to_representation(self, value):
-    #     return str(value)
+
     class Meta:
         fields = ('user', 'following')
         model = Follow
@@ -60,14 +60,7 @@ class FollowPostSerializer(
     user = serializers.StringRelatedField(
         default=serializers.CurrentUserDefault(),
     )
-    # queryset = Follow.objects.all()
-    # following = serializers.StringRelatedField(
-    #     source='following.username', read_only=True, many=False
-    # )
-    # following = serializers.SlugRelatedField(
-    #     slug_field='following', queryset=queryset
-    # )
-    following = FollowingField()  # можно так
+    following = serializers.CharField()
 
     class Meta:
         fields = ('user', 'following')
@@ -77,11 +70,11 @@ class FollowPostSerializer(
                 queryset=Follow.objects.all(),
                 fields=('user', 'following'),
                 message='Вы уже подписаны на этого автора!',
-            )
+            ),
         ]
 
-    def validate_following(self, following):
-        current_user = self.context.get('request').user
+    def validate_following(self, following):  # для charfield строка
+        current_user = self.context.get('request').user.username
         if following == current_user:
             raise serializers.ValidationError('Нельзя подписаться на себя!')
         return following
