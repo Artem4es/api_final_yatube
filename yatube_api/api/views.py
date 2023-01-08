@@ -1,7 +1,10 @@
 # TODO:  Напишите свой вариант
 from django.db.utils import IntegrityError
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import filters, viewsets, pagination, status
+from django_filters.rest_framework import DjangoFilterBackend
+
 from rest_framework.mixins import (
     CreateModelMixin,
     ListModelMixin,
@@ -13,6 +16,7 @@ from rest_framework.permissions import (
     IsAuthenticatedOrReadOnly,
 )
 from posts.models import Comment, Follow, Group, Post, User
+from .pagination import CustomPagination
 from .permissions import IsOwnerOrReadOnly
 from .serializers import (
     CommentSerializer,
@@ -29,7 +33,9 @@ class PostViewSet(viewsets.ModelViewSet):
         IsOwnerOrReadOnly,
         IsAuthenticatedOrReadOnly,
     )  # можно в один объёдинить два?
-    # pagination_class = pagination.PageNumberPagination
+    pagination_class = (
+        LimitOffsetPagination  # если есть offset то с ним а так без
+    )
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -37,7 +43,6 @@ class PostViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    pagination_class = None
     permission_classes = (IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly)
 
     def get_queryset(self):
@@ -67,7 +72,7 @@ class FollowViewSet(
     pagination_class = None
     permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
     filter_backends = (filters.SearchFilter,)
-    search_fields = ('following',)
+    search_fields = ('following__username', 'user__username')
     serializer_class = FollowSerializer
 
     def get_queryset(self):
