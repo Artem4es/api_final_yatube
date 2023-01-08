@@ -17,8 +17,7 @@ from .permissions import IsOwnerOrReadOnly
 from .serializers import (
     CommentSerializer,
     GroupSerializer,
-    FollowPostSerializer,
-    FollowRetrieveSerializer,
+    FollowSerializer,
     PostSerializer,
 )
 
@@ -69,11 +68,7 @@ class FollowViewSet(
     permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following',)
-
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return FollowPostSerializer
-        return FollowRetrieveSerializer
+    serializer_class = FollowSerializer
 
     def get_queryset(self):
         actual_user = self.request.user
@@ -81,13 +76,6 @@ class FollowViewSet(
         return new_queryset
 
     def perform_create(self, serializer):
-        following_username = serializer.validated_data.get('following')
-        try:
-            serializer.save(
-                user=self.request.user,
-                following=User.objects.get(username=following_username),
-            )
-        except IntegrityError:
-            raise ValidationError('Такая подписка уже есть!')
-        except User.DoesNotExist:
-            raise ValidationError('Нет такого пользователя')
+        serializer.save(
+            user=self.request.user,
+        )

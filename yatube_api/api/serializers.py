@@ -31,36 +31,13 @@ class GroupSerializer(serializers.ModelSerializer):
         model = Group
 
 
-class FollowRetrieveSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(source='user.username')
-    following = serializers.StringRelatedField(
-        source='following.username',
-    )
-
-    class Meta:
-        fields = ('user', 'following')
-        model = Follow
-
-
-class FollowingField(serializers.Field):
-    def to_representation(self, value):
-        return value.username
-
-    def to_internal_value(self, data):
-        try:
-            data = User.objects.get(username=data)
-        except User.DoesNotExist:  # такую ошибку не показывает
-            raise serializers.ValidationError('Такого юзера нет')
-        return data
-
-
-class FollowPostSerializer(
-    serializers.ModelSerializer
-):  # может описать модель Follower?
+class FollowSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(
         default=serializers.CurrentUserDefault(),
     )
-    following = serializers.CharField()
+    following = serializers.SlugRelatedField(
+        slug_field='username', queryset=User.objects.all()
+    )
 
     class Meta:
         fields = ('user', 'following')
@@ -73,8 +50,8 @@ class FollowPostSerializer(
             ),
         ]
 
-    def validate_following(self, following):  # для charfield строка
-        current_user = self.context.get('request').user.username
+    def validate_following(self, following):
+        current_user = self.context.get('request').user
         if following == current_user:
             raise serializers.ValidationError('Нельзя подписаться на себя!')
         return following
