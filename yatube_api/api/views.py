@@ -82,5 +82,5 @@ class FollowViewSet(
         following_username = serializer.initial_data.get('following')
         serializer.save(
             user=self.request.user,
-            following=User.objects.get(following__username=following_username),
+            # following=User.objects.get(following__username=following_username),
         )

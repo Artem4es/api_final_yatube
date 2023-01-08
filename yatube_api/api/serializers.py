@@ -44,12 +44,12 @@ class FollowRetrieveSerializer(serializers.ModelSerializer):
 
 class FollowingField(serializers.Field):
     def to_representation(self, value):
-        return value
+        return value.username
 
     def to_internal_value(self, data):
         try:
             data = User.objects.get(username=data)
-        except ValueError:
+        except User.DoesNotExist:  # такую ошибку не показывает
             raise serializers.ValidationError('Такого юзера нет')
         return data
 
@@ -67,7 +67,7 @@ class FollowPostSerializer(
     # following = serializers.SlugRelatedField(
     #     slug_field='following', queryset=queryset
     # )
-    following = FollowingField()
+    following = FollowingField()  # можно так
 
     class Meta:
         fields = ('user', 'following')
