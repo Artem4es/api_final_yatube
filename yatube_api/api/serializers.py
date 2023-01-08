@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
+from rest_framework.validators import UniqueTogetherValidator
 
-
-from posts.models import Comment, Post
+from posts.models import Comment, Follow, Group, Post, User
 
 
 class PostSerializer(serializers.ModelSerializer):
@@ -19,5 +19,69 @@ class CommentSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
         model = Comment
+        fields = '__all__'
+        read_only_fields = ('post',)
+
+
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = '__all__'
+        model = Group
+
+
+class FollowRetrieveSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(source='user.username')
+    following = serializers.StringRelatedField(
+        source='following.username',
+    )
+    # def to_representation(self, value):
+    #     return str(value)
+    class Meta:
+        fields = ('user', 'following')
+        model = Follow
+
+
+class FollowingField(serializers.Field):
+    def to_representation(self, value):
+        return value
+
+    def to_internal_value(self, data):
+        try:
+            data = User.objects.get(username=data)
+        except ValueError:
+            raise serializers.ValidationError('Такого юзера нет')
+        return data
+
+
+class FollowPostSerializer(
+    serializers.ModelSerializer
+):  # может описать модель Follower?
+    user = serializers.StringRelatedField(
+        default=serializers.CurrentUserDefault(),
+    )
+    # queryset = Follow.objects.all()
+    # following = serializers.StringRelatedField(
+    #     source='following.username', read_only=True, many=False
+    # )
+    # following = serializers.SlugRelatedField(
+    #     slug_field='following', queryset=queryset
+    # )
+    following = FollowingField()
+
+    class Meta:
+        fields = ('user', 'following')
+        model = Follow
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Follow.objects.all(),
+                fields=('user', 'following'),
+                message='Вы уже подписаны на этого автора!',
+            )
+        ]
+
+    def validate_following(self, following):
+        current_user = self.context.get('request').user
+        if following == current_user:
+            raise serializers.ValidationError('Нельзя подписаться на себя!')
+        return following
