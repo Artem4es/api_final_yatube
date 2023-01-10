@@ -1,41 +1,29 @@
-# TODO:  Напишите свой вариант
-from django.db.utils import IntegrityError
-from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import LimitOffsetPagination
-from rest_framework import filters, viewsets, pagination, status
-from django_filters.rest_framework import DjangoFilterBackend
-
+from rest_framework import filters, viewsets
 from rest_framework.mixins import (
     CreateModelMixin,
     ListModelMixin,
     RetrieveModelMixin,
 )
-from rest_framework.response import Response
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (
     IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
 )
-from posts.models import Comment, Follow, Group, Post, User
-from .pagination import CustomPagination
-from .permissions import IsOwnerOrReadOnly
-from .serializers import (
+
+from api.permissions import IsOwnerOrReadOnly
+from api.serializers import (
     CommentSerializer,
     GroupSerializer,
     FollowSerializer,
     PostSerializer,
 )
+from posts.models import Comment, Follow, Group, Post
 
 
 class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all()
+    queryset = Post.objects.all().select_related('author')
     serializer_class = PostSerializer
-    permission_classes = (
-        IsOwnerOrReadOnly,
-        IsAuthenticatedOrReadOnly,
-    )  # можно в один объёдинить два?
-    pagination_class = (
-        LimitOffsetPagination  # если есть offset то с ним а так без
-    )
+    pagination_class = LimitOffsetPagination
+    permission_classes = (IsOwnerOrReadOnly,)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -43,11 +31,13 @@ class PostViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    permission_classes = (IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly)
+    permission_classes = (IsOwnerOrReadOnly,)
 
     def get_queryset(self):
         post_id = self.kwargs.get('post_id')
-        new_queryset = Comment.objects.filter(post=post_id)
+        new_queryset = Comment.objects.filter(post=post_id).select_related(
+            'author'
+        )
         return new_queryset
 
     def perform_create(self, serializer):
@@ -60,7 +50,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    pagination_class = None
+    permission_classes = (IsOwnerOrReadOnly,)
 
 
 class FollowViewSet(
@@ -69,7 +59,6 @@ class FollowViewSet(
     ListModelMixin,
     RetrieveModelMixin,
 ):
-    pagination_class = None
     permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username', 'user__username')
@@ -77,7 +66,9 @@ class FollowViewSet(
 
     def get_queryset(self):
         actual_user = self.request.user
-        new_queryset = Follow.objects.filter(user=actual_user)
+        new_queryset = Follow.objects.filter(user=actual_user).select_related(
+            'user', 'following'
+        )
         return new_queryset
 
     def perform_create(self, serializer):
