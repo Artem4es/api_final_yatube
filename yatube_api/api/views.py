@@ -1,14 +1,10 @@
 from rest_framework import filters, viewsets
-from rest_framework.mixins import (
-    CreateModelMixin,
-    ListModelMixin,
-    RetrieveModelMixin,
-)
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (
     IsAuthenticated,
 )
 
+from api.custom_viewsets import CreateReadModelViewSet
 from api.permissions import IsOwnerOrReadOnly
 from api.serializers import (
     CommentSerializer,
@@ -53,12 +49,7 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (IsOwnerOrReadOnly,)
 
 
-class FollowViewSet(
-    viewsets.GenericViewSet,
-    CreateModelMixin,
-    ListModelMixin,
-    RetrieveModelMixin,
-):
+class FollowViewSet(CreateReadModelViewSet):
     permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username', 'user__username')
